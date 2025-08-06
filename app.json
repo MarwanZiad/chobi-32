@@ -1,0 +1,111 @@
+{
+  "expo": {
+    "name": "CHOBI 32 Clone",
+    "slug": "chobi-logo-and-homepage-integration-9j2hx85g-dkab0nm1-snro4odj-sjicolob-nxpaydmh-oe3fav0r-1m578hjd-ixu8c2up-3lvaocxl-b2ye3u7z-wexq0biz-ffigj2i5-7qn0ebtu-iltbzjyf-ttrm8so8-hrp440xk-ernwqf1c-mymtvuk3-6g5gosm8-rf4nxj8v-cqm6t6f1-l0o6antc",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.rork.chobi-logo-and-homepage-integration-9j2hx85g-dkab0nm1-snro4odj-sjicolob-nxpaydmh-oe3fav0r-1m578hjd-ixu8c2up-3lvaocxl-b2ye3u7z-wexq0biz-ffigj2i5-7qn0ebtu-iltbzjyf-ttrm8so8-hrp440xk-ernwqf1c-mymtvuk3-6g5gosm8-rf4nxj8v-cqm6t6f1-l0o6antc",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
+        "UIBackgroundModes": [
+          "audio"
+        ],
+        "NSPhotoLibraryAddUsageDescription": "Allow $(PRODUCT_NAME) to save photos."
+      },
+      "usesIcloudStorage": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "app.rork.chobi-logo-and-homepage-integration-9j2hx85g-dkab0nm1-snro4odj-sjicolob-nxpaydmh-oe3fav0r-1m578hjd-ixu8c2up-3lvaocxl-b2ye3u7z-wexq0biz-ffigj2i5-7qn0ebtu-iltbzjyf-ttrm8so8-hrp440xk-ernwqf1c-mymtvuk3-6g5gosm8-rf4nxj8v-cqm6t6f1-l0o6antc",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "READ_MEDIA_AUDIO",
+        "READ_MEDIA_VISUAL_USER_SELECTED",
+        "ACCESS_MEDIA_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://rork.com/"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./local/assets/notification_icon.png",
+          "color": "#ffffff",
+          "defaultChannel": "default",
+          "sounds": [
+            "./local/assets/notification_sound.wav"
+          ],
+          "enableBackgroundRemoteNotifications": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your friends."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos.",
+          "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
