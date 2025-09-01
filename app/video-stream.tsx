@@ -282,7 +282,6 @@ function VideoStreamScreen() {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    Alert.alert('فلتر', 'تم تطبيق الفلتر بنجاح');
     setShowEffectsModal(false);
   }, [stream]);
   
@@ -291,7 +290,6 @@ function VideoStreamScreen() {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    Alert.alert('مؤثر صوتي', 'تم تشغيل المؤثر الصوتي');
   }, [stream]);
   
   const handleInviteGuest = useCallback((userId: string) => {

@@ -279,7 +279,7 @@ export const [StreamProvider, useStream] = createContextHook(() => {
           cpuUsage: Math.min(100, Math.max(20, prev.cpuUsage + Math.random() * 10 - 5)),
           memoryUsage: Math.min(100, Math.max(30, prev.memoryUsage + Math.random() * 10 - 5)),
         }));
-      }, 1000) as unknown as ReturnType<typeof setInterval>;
+      }, 1000);
       
       // Simulate viewers joining
       viewerSimulationRef.current = setInterval(() => {
@@ -300,7 +300,7 @@ export const [StreamProvider, useStream] = createContextHook(() => {
           };
           setViewers(prev => [...prev.slice(-99), newViewer]);
         }
-      }, 3000) as unknown as ReturnType<typeof setInterval>;
+      }, 3000);
       
       Alert.alert('البث المباشر', `تم بدء البث ${type === 'video' ? 'المرئي' : 'الصوتي'} بنجاح!`);
     } catch (error) {
