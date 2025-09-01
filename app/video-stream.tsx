@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   X,
   Heart,
@@ -24,13 +24,24 @@ import {
   Bell,
   Clock,
   Coins,
+  Camera,
+  Filter,
+  Volume2,
+  Music,
+  Sliders,
+  Ban,
+  UserMinus,
+  Redo,
 } from "lucide-react-native";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Modal, Animated, SafeAreaView, Image, Share, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Modal, Animated, SafeAreaView, Image, Share, Alert, Platform } from "react-native";
 import { useRouter } from "expo-router";
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import * as Haptics from 'expo-haptics';
 import MediaRoomScreen from './media-room';
 import LiveEndedModal from '@/components/LiveEndedModal';
 import StreamOptimizationModal from '@/components/StreamOptimizationModal';
 import StreamSettingsModal from '@/components/StreamSettingsModal';
+import { useStream } from '@/hooks/use-stream-store';
 
 // Mock data
 const mockTopViewers = [
@@ -98,10 +109,9 @@ const mockCurrentViewers = [
 
 function VideoStreamScreen() {
   const router = useRouter();
-  const [viewerCount, setViewerCount] = useState(1247);
-  const [streamDuration, setStreamDuration] = useState(219); // 3h59m
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOn, setIsVideoOn] = useState(true);
+  const stream = useStream();
+  const [permission, requestPermission] = useCameraPermissions();
+  const [facing, setFacing] = useState<CameraType>('front');
   const [showChatModal, setShowChatModal] = useState(false);
   const [showGiftsModal, setShowGiftsModal] = useState(false);
   const [showEffectsModal, setShowEffectsModal] = useState(false);
@@ -112,20 +122,17 @@ function VideoStreamScreen() {
   const [showMediaRoomModal, setShowMediaRoomModal] = useState(false);
   const [showLiveEndedModal, setShowLiveEndedModal] = useState(false);
   const [showStreamSettingsModal, setShowStreamSettingsModal] = useState(false);
+  const [showAudioControlsModal, setShowAudioControlsModal] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
-  const [chatMessages, setChatMessages] = useState(mockChatMessages);
-  const [floatingHearts, setFloatingHearts] = useState<Array<{id: number, left: number}>>([]);
+  const [floatingHearts, setFloatingHearts] = useState<{id: number, left: number}[]>([]);
   const [selectedFilter, setSelectedFilter] = useState('none');
   const [isBeautyMode, setIsBeautyMode] = useState(false);
-  const [countdownTime, setCountdownTime] = useState(3540); // 59 minutes in seconds
+  const [countdownTime, setCountdownTime] = useState(3540);
   const [activitiesIndex, setActivitiesIndex] = useState(0);
   const [trendingColorIndex, setTrendingColorIndex] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [heartCount, setHeartCount] = useState(100);
-  const [coinsCount, setCoinsCount] = useState(10000);
   const [selectedGiftCategory, setSelectedGiftCategory] = useState<'basic' | 'premium' | 'vip'>('basic');
-  const [giftAnimation, setGiftAnimation] = useState<{id: number, gift: string, x: number, y: number} | null>(null);
   const activitiesRef = useRef<any>(null);
   const trendingRef = useRef<any>(null);
 
@@ -140,13 +147,30 @@ function VideoStreamScreen() {
   // Trending colors
   const trendingColors = ['#ff4757', '#2196F3', '#9C27B0', '#E91E63'];
 
+  // Start stream when component mounts
+  useEffect(() => {
+    if (!stream.isStreaming) {
+      stream.startStream('video');
+    }
+    
+    return () => {
+      if (stream.isStreaming) {
+        stream.endStream();
+      }
+    };
+  }, []);
+  
+  // Request camera permission
+  useEffect(() => {
+    if (!permission?.granted) {
+      requestPermission();
+    }
+  }, [permission]);
+  
+  // Countdown timer
   useEffect(() => {
     const timer = setInterval(() => {
-      setStreamDuration(prev => prev + 1);
       setCountdownTime(prev => Math.max(0, prev - 1));
-      if (Math.random() > 0.7) {
-        setViewerCount(prev => Math.max(1, prev + Math.floor(Math.random() * 10) - 5));
-      }
       if (Math.random() > 0.85) {
         addFloatingHeart();
       }
@@ -198,74 +222,81 @@ function VideoStreamScreen() {
     }, 3000);
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = useCallback(() => {
     if (chatMessage.trim()) {
-      const newMessage = {
-        id: Date.now(),
-        user: "أنت",
-        message: chatMessage,
-        avatar: "أ",
-      };
-      setChatMessages(prev => [...prev, newMessage]);
+      stream.sendMessage(chatMessage);
       setChatMessage("");
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
     }
-  };
+  }, [chatMessage, stream]);
 
-  const handleSendGift = (gift: typeof mockGifts[0]) => {
-    // Check if user has enough coins
-    if (coinsCount < gift.price) {
-      Alert.alert('رصيد غير كافي', 'ليس لديك عملات كافية لإرسال هذه الهدية');
-      return;
+  const handleSendGift = useCallback(async (gift: typeof mockGifts[0]) => {
+    const success = await stream.sendGift(
+      gift.id.toString(),
+      gift.name,
+      gift.icon,
+      gift.price
+    );
+    
+    if (success) {
+      // Add floating hearts
+      for (let i = 0; i < Math.min(gift.price / 100, 10); i++) {
+        setTimeout(() => addFloatingHeart(), i * 200);
+      }
+      setShowGiftsModal(false);
     }
-    
-    // Deduct coins
-    setCoinsCount(prev => prev - gift.price);
-    
-    // Add hearts based on gift value
-    const heartsToAdd = Math.min(gift.price / 10, 50);
-    setHeartCount(prev => prev + Math.floor(heartsToAdd));
-    
-    // Show gift animation
-    const animationId = Date.now();
-    setGiftAnimation({
-      id: animationId,
-      gift: gift.icon,
-      x: Math.random() * 80 + 10,
-      y: 50
-    });
-    
-    // Remove animation after 3 seconds
-    setTimeout(() => {
-      setGiftAnimation(null);
-    }, 3000);
-    
-    // Add floating hearts
-    for (let i = 0; i < Math.min(gift.price / 100, 10); i++) {
-      setTimeout(() => addFloatingHeart(), i * 200);
-    }
-    
-    // Add gift message to chat
-    const giftMessage = {
-      id: Date.now(),
-      user: "أنت",
-      message: `أرسل ${gift.name} ${gift.icon}`,
-      avatar: "أ",
-    };
-    setChatMessages(prev => [...prev, giftMessage]);
-    
-    console.log(`Gift sent: ${gift.name} for ${gift.price} coins`);
-    setShowGiftsModal(false);
-  };
+  }, [stream]);
 
-  const handleCloseStream = () => {
-    console.log('X button pressed - showing live ended modal');
+  const handleCloseStream = useCallback(async () => {
+    const streamData = await stream.endStream();
     setShowLiveEndedModal(true);
-  };
+  }, [stream]);
 
-  const handleLiveEndedClose = () => {
+  const handleLiveEndedClose = useCallback(() => {
     setShowLiveEndedModal(false);
     router.back();
-  };
+  }, [router]);
+  
+  const toggleCamera = useCallback(() => {
+    setFacing(current => current === 'back' ? 'front' : 'back');
+    stream.toggleCamera();
+  }, [stream]);
+  
+  const handleToggleMute = useCallback(() => {
+    stream.toggleMute();
+  }, [stream]);
+  
+  const handleToggleVideo = useCallback(() => {
+    stream.toggleVideo();
+  }, [stream]);
+  
+  const handleToggleRecording = useCallback(() => {
+    stream.toggleRecording();
+  }, [stream]);
+  
+  const handleApplyFilter = useCallback((filterId: string) => {
+    stream.applyVideoFilter(filterId);
+    setShowEffectsModal(false);
+  }, [stream]);
+  
+  const handlePlayAudioEffect = useCallback((effectId: string) => {
+    stream.playAudioEffect(effectId);
+  }, [stream]);
+  
+  const handleInviteGuest = useCallback((userId: string) => {
+    stream.inviteGuest(userId);
+    setShowGuestsModal(false);
+  }, [stream]);
+  
+  const handleBlockUser = useCallback((userId: string) => {
+    stream.blockUser(userId);
+  }, [stream]);
+  
+  const handleMuteUser = useCallback((userId: string) => {
+    stream.muteUser(userId);
+  }, [stream]);
 
   const mockStreamData = {
     startTime: '14:30',
@@ -288,12 +319,34 @@ function VideoStreamScreen() {
         resizeMode="cover"
       />
       
-      {/* Video Background */}
-      <View style={styles.videoBackground}>
-        <View style={styles.videoPlaceholder}>
-          <Text style={styles.videoPlaceholderText}>محتوى البث المباشر هنا</Text>
+      {/* Camera View or Video Background */}
+      {permission?.granted && Platform.OS !== 'web' ? (
+        <CameraView 
+          style={styles.camera} 
+          facing={facing}
+        >
+          {/* Camera controls overlay */}
+          <TouchableOpacity 
+            style={styles.flipCameraButton}
+            onPress={toggleCamera}
+          >
+            <FlipHorizontal size={24} color="white" />
+          </TouchableOpacity>
+        </CameraView>
+      ) : (
+        <View style={styles.videoBackground}>
+          <View style={styles.videoPlaceholder}>
+            {!stream.isVideoOn ? (
+              <View style={styles.videoOffContainer}>
+                <VideoOff size={48} color="white" />
+                <Text style={styles.videoOffText}>الكاميرا مغلقة</Text>
+              </View>
+            ) : (
+              <Text style={styles.videoPlaceholderText}>محتوى البث المباشر</Text>
+            )}
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Top Status Bar */}
       <View style={styles.statusBar}>
@@ -303,7 +356,10 @@ function VideoStreamScreen() {
           </TouchableOpacity>
           
           <View style={styles.viewerCountDisplay}>
-            <Text style={styles.viewerCountText}>5.0k</Text>
+            <View style={styles.viewerCountInner}>
+              <Eye size={12} color="white" />
+              <Text style={styles.viewerCountText}>{stream.stats.viewers.toLocaleString()}</Text>
+            </View>
           </View>
           
           <View style={styles.viewerAvatars}>
@@ -357,7 +413,7 @@ function VideoStreamScreen() {
           </View>
           <View style={styles.hostStatsUnderAvatar}>
             <Text style={styles.heartEmojiUnderAvatar}>❤️</Text>
-            <Text style={styles.heartCountTextUnderAvatar}>{heartCount}</Text>
+            <Text style={styles.heartCountTextUnderAvatar}>{stream.heartsCount}</Text>
           </View>
         </View>
       </View>
@@ -382,11 +438,19 @@ function VideoStreamScreen() {
       <View style={styles.coinsDisplayMovedUp}>
         <View style={styles.coinsContainer}>
           <View style={styles.coinsWithIcon}>
-            <Text style={styles.coinsText}>{coinsCount.toLocaleString()}</Text>
+            <Text style={styles.coinsText}>{stream.coinsBalance.toLocaleString()}</Text>
             <Text style={styles.coinsIconBehind}>💰</Text>
           </View>
         </View>
       </View>
+      
+      {/* Recording Indicator */}
+      {stream.isRecording && (
+        <View style={styles.recordingIndicator}>
+          <Redo size={16} color="#FF0000" />
+          <Text style={styles.recordingText}>تسجيل</Text>
+        </View>
+      )}
 
       {/* Hour Rating - Below Profile */}
       <View style={styles.hourRatingBelowProfile}>
@@ -457,13 +521,13 @@ function VideoStreamScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.chatModalContent}>
-              {chatMessages.map((msg) => (
+              {stream.messages.map((msg) => (
                 <View key={msg.id} style={styles.chatModalMessage}>
                   <View style={styles.chatModalAvatar}>
-                    <Text style={styles.chatModalAvatarText}>{msg.avatar}</Text>
+                    <Text style={styles.chatModalAvatarText}>{msg.userName[0]}</Text>
                   </View>
                   <View style={styles.chatModalMessageContent}>
-                    <Text style={styles.chatModalUser}>{msg.user}</Text>
+                    <Text style={styles.chatModalUser}>{msg.userName}</Text>
                     <Text style={styles.chatModalText}>{msg.message}</Text>
                   </View>
                 </View>
@@ -755,6 +819,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
+  },
+  viewerCountInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   viewerCountText: {
     fontSize: 11,
@@ -1694,6 +1763,53 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: 'bold',
     color: '#333',
+  },
+  camera: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  flipCameraButton: {
+    position: 'absolute',
+    top: 100,
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  videoOffContainer: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  videoOffText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  recordingIndicator: {
+    position: 'absolute',
+    top: 110,
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+    zIndex: 10,
+  },
+  recordingText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
 

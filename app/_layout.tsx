@@ -9,6 +9,7 @@ import { ChatProvider, useChat } from "@/hooks/use-chat-store";
 import { AppProvider } from "@/hooks/use-app-store";
 import { NotificationProvider } from "@/hooks/use-notifications";
 import { AuthProvider, useAuth } from "@/hooks/use-auth-store";
+import { StreamProvider } from "@/hooks/use-stream-store";
 import CallScreen from "@/components/CallScreen";
 import { trpc, trpcClient } from "@/lib/trpc";
 
@@ -98,12 +99,14 @@ export default function RootLayout() {
           <AppProvider>
             <NotificationProvider>
               <ChatProvider>
-                <ChobiContext>
-                  <GestureHandlerRootView style={{ flex: 1 }}>
-                    <RootLayoutNav />
-                    <CallScreenWrapper />
-                  </GestureHandlerRootView>
-                </ChobiContext>
+                <StreamProvider>
+                  <ChobiContext>
+                    <GestureHandlerRootView style={{ flex: 1 }}>
+                      <RootLayoutNav />
+                      <CallScreenWrapper />
+                    </GestureHandlerRootView>
+                  </ChobiContext>
+                </StreamProvider>
               </ChatProvider>
             </NotificationProvider>
           </AppProvider>
