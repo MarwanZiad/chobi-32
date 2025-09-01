@@ -32,6 +32,7 @@ import {
   Ban,
   UserMinus,
   Redo,
+  Youtube,
 } from "lucide-react-native";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Modal, Animated, SafeAreaView, Image, Share, Alert, Platform, Switch } from "react-native";
 import { useRouter } from "expo-router";
@@ -42,6 +43,7 @@ import LiveEndedModal from '@/components/LiveEndedModal';
 import StreamOptimizationModal from '@/components/StreamOptimizationModal';
 import StreamSettingsModal from '@/components/StreamSettingsModal';
 import { useStream } from '@/hooks/use-stream-store';
+import { YouTubePlayerModal } from '@/components/YouTubePlayer';
 
 // Mock data
 const mockTopViewers = [
@@ -133,6 +135,7 @@ function VideoStreamScreen() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [selectedGiftCategory, setSelectedGiftCategory] = useState<'basic' | 'premium' | 'vip'>('basic');
+  const [showYouTubeModal, setShowYouTubeModal] = useState(false);
   const activitiesRef = useRef<any>(null);
   const trendingRef = useRef<any>(null);
 
@@ -501,6 +504,19 @@ function VideoStreamScreen() {
           }}>
             <ImageIcon size={18} color="white" />
             <Text style={styles.bottomControlLabel}>الوسائط</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.bottomControlButton, { backgroundColor: 'rgba(255, 0, 0, 0.3)', borderRadius: 8, padding: 4 }]}
+            onPress={() => {
+              console.log('📺 فتح YouTube');
+              setShowYouTubeModal(true);
+              if (Platform.OS !== 'web') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
+            }}
+          >
+            <Youtube size={18} color="white" />
+            <Text style={styles.bottomControlLabel}>YouTube</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.bottomControlButton} onPress={() => {
             setShowOptimizationModal(true);
@@ -1002,6 +1018,12 @@ function VideoStreamScreen() {
           </View>
         </View>
       </Modal>
+      
+      {/* YouTube Player Modal */}
+      <YouTubePlayerModal
+        visible={showYouTubeModal}
+        onClose={() => setShowYouTubeModal(false)}
+      />
     </SafeAreaView>
   );
 }
