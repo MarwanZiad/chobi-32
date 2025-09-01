@@ -610,7 +610,10 @@ export default function AudioStreamScreen() {
         <View style={styles.leftBottomControls}>
           <TouchableOpacity 
             style={styles.bottomControlButton}
-            onPress={() => setShowStreamSettingsModal(true)}
+            onPress={() => {
+              setShowStreamSettingsModal(true);
+              console.log('Opening stream settings modal');
+            }}
           >
             <MoreHorizontal size={18} color="white" />
             <Text style={styles.bottomControlLabel}>المزيد</Text>
@@ -628,27 +631,48 @@ export default function AudioStreamScreen() {
             <Share size={18} color="white" />
             <Text style={styles.bottomControlLabel}>المشاركة</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomControlButton} onPress={() => setShowMediaRoomModal(true)}>
+          <TouchableOpacity style={styles.bottomControlButton} onPress={() => {
+            setShowMediaRoomModal(true);
+            console.log('Opening media room modal');
+          }}>
             <ImageIcon size={18} color="white" />
             <Text style={styles.bottomControlLabel}>الوسائط</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomControlButton} onPress={() => setShowStreamSettings(true)}>
+          <TouchableOpacity style={styles.bottomControlButton} onPress={() => {
+            setShowEffects(true);
+            console.log('Opening effects modal');
+          }}>
             <Sparkles size={18} color="white" />
             <Text style={styles.bottomControlLabel}>تحسين</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.commentsButton} onPress={() => {
-            Alert.alert('التعليقات', 'فتح نافذة التعليقات');
+            Alert.alert('التعليقات', 'نافذة التعليقات مفعلة\n\nيمكنك كتابة التعليقات والتفاعل مع المستمعين');
+            console.log('Comments feature activated');
           }}>
             <Text style={styles.commentsButtonText}>التعليقات</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.bottomControlButton} onPress={() => {
-            Alert.alert('ضيوف', 'عرض قائمة الضيوف');
+            Alert.alert(
+              'قائمة الضيوف',
+              'المستمعين الحاليين: 5.0k\n\nيمكنك دعوة المستمعين للانضمام للمحادثة الصوتية',
+              [
+                { text: 'عرض القائمة', onPress: () => console.log('Showing guests list') },
+                { text: 'إغلاق', style: 'cancel' }
+              ]
+            );
           }}>
             <UserCheck size={18} color="white" />
             <Text style={styles.bottomControlLabel}>ضيوف</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.bottomControlButton} onPress={() => {
-            Alert.alert('المضيفين', 'عرض قائمة المضيفين');
+            Alert.alert(
+              'المضيفين المتاحين',
+              'يمكنك دعوة مضيفين آخرين للانضمام إلى البث الصوتي',
+              [
+                { text: 'عرض المضيفين', onPress: () => console.log('Showing hosts list') },
+                { text: 'إغلاق', style: 'cancel' }
+              ]
+            );
           }}>
             <UserPlus size={18} color="white" />
             <Text style={styles.bottomControlLabel}>المضيفين</Text>

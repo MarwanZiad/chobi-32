@@ -33,7 +33,7 @@ import {
   UserMinus,
   Redo,
 } from "lucide-react-native";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Modal, Animated, SafeAreaView, Image, Share, Alert, Platform } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Modal, Animated, SafeAreaView, Image, Share, Alert, Platform, Switch } from "react-native";
 import { useRouter } from "expo-router";
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
@@ -279,11 +279,19 @@ function VideoStreamScreen() {
   const handleApplyFilter = useCallback((filterId: string) => {
     stream.applyVideoFilter(filterId);
     setSelectedFilter(filterId);
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    Alert.alert('فلتر', 'تم تطبيق الفلتر بنجاح');
     setShowEffectsModal(false);
   }, [stream]);
   
   const handlePlayAudioEffect = useCallback((effectId: string) => {
     stream.playAudioEffect(effectId);
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    Alert.alert('مؤثر صوتي', 'تم تشغيل المؤثر الصوتي');
   }, [stream]);
   
   const handleInviteGuest = useCallback((userId: string) => {
@@ -489,22 +497,37 @@ function VideoStreamScreen() {
             <ShareIcon size={18} color="white" />
             <Text style={styles.bottomControlLabel}>المشاركة</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomControlButton} onPress={() => setShowMediaRoomModal(true)}>
+          <TouchableOpacity style={styles.bottomControlButton} onPress={() => {
+            setShowMediaRoomModal(true);
+            console.log('Opening media room modal');
+          }}>
             <ImageIcon size={18} color="white" />
             <Text style={styles.bottomControlLabel}>الوسائط</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomControlButton} onPress={() => setShowOptimizationModal(true)}>
+          <TouchableOpacity style={styles.bottomControlButton} onPress={() => {
+            setShowOptimizationModal(true);
+            console.log('Opening optimization modal');
+          }}>
             <Sparkles size={18} color="white" />
             <Text style={styles.bottomControlLabel}>تحسين</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.commentsButton} onPress={() => setShowChatModal(true)}>
+          <TouchableOpacity style={styles.commentsButton} onPress={() => {
+            setShowChatModal(true);
+            console.log('Opening chat modal');
+          }}>
             <Text style={styles.commentsButtonText}>التعليقات</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomControlButton} onPress={() => setShowGuestsModal(true)}>
+          <TouchableOpacity style={styles.bottomControlButton} onPress={() => {
+            setShowGuestsModal(true);
+            console.log('Opening guests modal');
+          }}>
             <UserCheck size={18} color="white" />
             <Text style={styles.bottomControlLabel}>ضيوف</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomControlButton} onPress={() => setShowHostsModal(true)}>
+          <TouchableOpacity style={styles.bottomControlButton} onPress={() => {
+            setShowHostsModal(true);
+            console.log('Opening hosts modal');
+          }}>
             <UserPlus size={18} color="white" />
             <Text style={styles.bottomControlLabel}>المضيفين</Text>
           </TouchableOpacity>
