@@ -3,7 +3,7 @@ import {
   X,
   Heart,
   MessageCircle,
-  Share,
+  Share as ShareIcon,
   Users,
   Eye,
   Gift,
@@ -25,7 +25,7 @@ import {
   Clock,
   Coins,
 } from "lucide-react-native";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Modal, Animated, SafeAreaView, Image } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Modal, Animated, SafeAreaView, Image, Share, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import MediaRoomScreen from './media-room';
 import LiveEndedModal from '@/components/LiveEndedModal';
@@ -120,6 +120,12 @@ function VideoStreamScreen() {
   const [countdownTime, setCountdownTime] = useState(3540); // 59 minutes in seconds
   const [activitiesIndex, setActivitiesIndex] = useState(0);
   const [trendingColorIndex, setTrendingColorIndex] = useState(0);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [heartCount, setHeartCount] = useState(100);
+  const [coinsCount, setCoinsCount] = useState(10000);
+  const [selectedGiftCategory, setSelectedGiftCategory] = useState<'basic' | 'premium' | 'vip'>('basic');
+  const [giftAnimation, setGiftAnimation] = useState<{id: number, gift: string, x: number, y: number} | null>(null);
   const activitiesRef = useRef<any>(null);
   const trendingRef = useRef<any>(null);
 
@@ -205,10 +211,49 @@ function VideoStreamScreen() {
     }
   };
 
-  const handleSendGift = () => {
-    for (let i = 0; i < 3; i++) {
+  const handleSendGift = (gift: typeof mockGifts[0]) => {
+    // Check if user has enough coins
+    if (coinsCount < gift.price) {
+      Alert.alert('رصيد غير كافي', 'ليس لديك عملات كافية لإرسال هذه الهدية');
+      return;
+    }
+    
+    // Deduct coins
+    setCoinsCount(prev => prev - gift.price);
+    
+    // Add hearts based on gift value
+    const heartsToAdd = Math.min(gift.price / 10, 50);
+    setHeartCount(prev => prev + Math.floor(heartsToAdd));
+    
+    // Show gift animation
+    const animationId = Date.now();
+    setGiftAnimation({
+      id: animationId,
+      gift: gift.icon,
+      x: Math.random() * 80 + 10,
+      y: 50
+    });
+    
+    // Remove animation after 3 seconds
+    setTimeout(() => {
+      setGiftAnimation(null);
+    }, 3000);
+    
+    // Add floating hearts
+    for (let i = 0; i < Math.min(gift.price / 100, 10); i++) {
       setTimeout(() => addFloatingHeart(), i * 200);
     }
+    
+    // Add gift message to chat
+    const giftMessage = {
+      id: Date.now(),
+      user: "أنت",
+      message: `أرسل ${gift.name} ${gift.icon}`,
+      avatar: "أ",
+    };
+    setChatMessages(prev => [...prev, giftMessage]);
+    
+    console.log(`Gift sent: ${gift.name} for ${gift.price} coins`);
     setShowGiftsModal(false);
   };
 
@@ -283,11 +328,27 @@ function VideoStreamScreen() {
         
         <View style={styles.rightStatus}>
           <View style={styles.hostInfo}>
-            <TouchableOpacity style={styles.bellButtonSmaller}>
-              <Bell size={8} color="white" />
+            <TouchableOpacity 
+              style={[styles.bellButtonSmaller, notificationsEnabled && styles.bellButtonActive]}
+              onPress={() => {
+                setNotificationsEnabled(!notificationsEnabled);
+                console.log('Notifications:', !notificationsEnabled ? 'enabled' : 'disabled');
+              }}
+            >
+              <Bell size={8} color={notificationsEnabled ? "#ffd700" : "white"} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.followButtonLarger}>
-              <Plus size={8} color="white" />
+            <TouchableOpacity 
+              style={[styles.followButtonLarger, isFollowing && styles.followButtonActive]}
+              onPress={() => {
+                setIsFollowing(!isFollowing);
+                console.log('Follow status:', !isFollowing ? 'following' : 'unfollowed');
+              }}
+            >
+              {isFollowing ? (
+                <UserCheck size={8} color="white" />
+              ) : (
+                <Plus size={8} color="white" />
+              )}
             </TouchableOpacity>
             <Text style={styles.hostNameRightLarger}>Marwan</Text>
             <View style={styles.hostAvatarLarger}>
@@ -296,7 +357,7 @@ function VideoStreamScreen() {
           </View>
           <View style={styles.hostStatsUnderAvatar}>
             <Text style={styles.heartEmojiUnderAvatar}>❤️</Text>
-            <Text style={styles.heartCountTextUnderAvatar}>100</Text>
+            <Text style={styles.heartCountTextUnderAvatar}>{heartCount}</Text>
           </View>
         </View>
       </View>
@@ -321,7 +382,7 @@ function VideoStreamScreen() {
       <View style={styles.coinsDisplayMovedUp}>
         <View style={styles.coinsContainer}>
           <View style={styles.coinsWithIcon}>
-            <Text style={styles.coinsText}>10000</Text>
+            <Text style={styles.coinsText}>{coinsCount.toLocaleString()}</Text>
             <Text style={styles.coinsIconBehind}>💰</Text>
           </View>
         </View>
@@ -344,8 +405,23 @@ function VideoStreamScreen() {
             <MoreHorizontal size={18} color="white" />
             <Text style={styles.bottomControlLabel}>المزيد</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomControlButton}>
-            <Share size={18} color="white" />
+          <TouchableOpacity 
+            style={styles.bottomControlButton}
+            onPress={async () => {
+              try {
+                const result = await Share.share({
+                  message: 'شاهد البث المباشر معي! 🎥\n\nانضم إلى البث المباشر الآن',
+                  title: 'مشاركة البث المباشر'
+                });
+                if (result.action === Share.sharedAction) {
+                  console.log('Shared successfully');
+                }
+              } catch (error) {
+                console.error('Share error:', error);
+              }
+            }}
+          >
+            <ShareIcon size={18} color="white" />
             <Text style={styles.bottomControlLabel}>المشاركة</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.bottomControlButton} onPress={() => setShowMediaRoomModal(true)}>
@@ -420,7 +496,7 @@ function VideoStreamScreen() {
             </View>
             <View style={styles.giftsGrid}>
               {mockGifts.map((gift) => (
-                <TouchableOpacity key={gift.id} onPress={handleSendGift} style={styles.giftItem}>
+                <TouchableOpacity key={gift.id} onPress={() => handleSendGift(gift)} style={styles.giftItem}>
                   <Text style={styles.giftIcon}>{gift.icon}</Text>
                   <Text style={styles.giftName}>{gift.name}</Text>
                   <Text style={styles.giftPrice}>{gift.price} 💎</Text>
@@ -908,6 +984,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     padding: 3,
     borderRadius: 6,
+  },
+  bellButtonActive: {
+    backgroundColor: '#ffd700',
+  },
+  followButtonActive: {
+    backgroundColor: '#00ff00',
   },
   hostRating: {
     flexDirection: 'row',
