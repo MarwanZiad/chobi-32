@@ -58,6 +58,11 @@ export interface StreamStats {
   memoryUsage: number;
 }
 
+interface StreamIntervals {
+  viewerCountInterval: NodeJS.Timeout | null;
+  heartAnimationInterval: NodeJS.Timeout | null;
+}
+
 export interface ViewerInfo {
   id: string;
   name: string;

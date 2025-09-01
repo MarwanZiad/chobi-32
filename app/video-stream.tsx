@@ -868,6 +868,140 @@ function VideoStreamScreen() {
         visible={showStreamSettingsModal}
         onClose={() => setShowStreamSettingsModal(false)}
       />
+      
+      {/* Audio Controls Modal */}
+      <Modal visible={showAudioControlsModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>إعدادات الصوت</Text>
+              <TouchableOpacity onPress={() => setShowAudioControlsModal(false)}>
+                <X size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.audioControlsContent}>
+              <View style={styles.audioControl}>
+                <View style={styles.audioControlHeader}>
+                  <Volume2 size={20} color="#333" />
+                  <Text style={styles.audioControlLabel}>مستوى الصوت</Text>
+                </View>
+                <View style={styles.sliderContainer}>
+                  <Text style={styles.sliderValue}>{stream.settings.micVolume}%</Text>
+                  <TouchableOpacity 
+                    style={styles.sliderButton}
+                    onPress={() => {
+                      const newVolume = Math.min(100, stream.settings.micVolume + 10);
+                      stream.updateSettings({ micVolume: newVolume });
+                    }}
+                  >
+                    <Text style={styles.sliderButtonText}>+</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.sliderButton}
+                    onPress={() => {
+                      const newVolume = Math.max(0, stream.settings.micVolume - 10);
+                      stream.updateSettings({ micVolume: newVolume });
+                    }}
+                  >
+                    <Text style={styles.sliderButtonText}>-</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.audioControl}>
+                <View style={styles.audioControlHeader}>
+                  <Music size={20} color="#333" />
+                  <Text style={styles.audioControlLabel}>الباس</Text>
+                </View>
+                <View style={styles.sliderContainer}>
+                  <Text style={styles.sliderValue}>{stream.settings.bassLevel}%</Text>
+                  <TouchableOpacity 
+                    style={styles.sliderButton}
+                    onPress={() => {
+                      const newBass = Math.min(100, stream.settings.bassLevel + 10);
+                      stream.updateSettings({ bassLevel: newBass });
+                    }}
+                  >
+                    <Text style={styles.sliderButtonText}>+</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.sliderButton}
+                    onPress={() => {
+                      const newBass = Math.max(0, stream.settings.bassLevel - 10);
+                      stream.updateSettings({ bassLevel: newBass });
+                    }}
+                  >
+                    <Text style={styles.sliderButtonText}>-</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.audioControl}>
+                <View style={styles.audioControlHeader}>
+                  <Sliders size={20} color="#333" />
+                  <Text style={styles.audioControlLabel}>الترددات العالية</Text>
+                </View>
+                <View style={styles.sliderContainer}>
+                  <Text style={styles.sliderValue}>{stream.settings.trebleLevel}%</Text>
+                  <TouchableOpacity 
+                    style={styles.sliderButton}
+                    onPress={() => {
+                      const newTreble = Math.min(100, stream.settings.trebleLevel + 10);
+                      stream.updateSettings({ trebleLevel: newTreble });
+                    }}
+                  >
+                    <Text style={styles.sliderButtonText}>+</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.sliderButton}
+                    onPress={() => {
+                      const newTreble = Math.max(0, stream.settings.trebleLevel - 10);
+                      stream.updateSettings({ trebleLevel: newTreble });
+                    }}
+                  >
+                    <Text style={styles.sliderButtonText}>-</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.audioSwitches}>
+                <TouchableOpacity 
+                  style={[styles.audioSwitch, stream.settings.noiseReduction && styles.audioSwitchActive]}
+                  onPress={() => stream.updateSettings({ noiseReduction: !stream.settings.noiseReduction })}
+                >
+                  <Filter size={16} color={stream.settings.noiseReduction ? "white" : "#333"} />
+                  <Text style={[styles.audioSwitchText, stream.settings.noiseReduction && styles.audioSwitchTextActive]}>تقليل الضوضاء</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.audioSwitch, stream.settings.echoCancellation && styles.audioSwitchActive]}
+                  onPress={() => stream.updateSettings({ echoCancellation: !stream.settings.echoCancellation })}
+                >
+                  <Volume2 size={16} color={stream.settings.echoCancellation ? "white" : "#333"} />
+                  <Text style={[styles.audioSwitchText, stream.settings.echoCancellation && styles.audioSwitchTextActive]}>إلغاء الصدى</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.resetAudioButton}
+                onPress={() => {
+                  stream.updateSettings({
+                    micVolume: 75,
+                    bassLevel: 50,
+                    trebleLevel: 50,
+                    noiseReduction: true,
+                    echoCancellation: true,
+                  });
+                  Alert.alert('إعادة تعيين', 'تم إعادة تعيين إعدادات الصوت');
+                  setShowAudioControlsModal(false);
+                }}
+              >
+                <Text style={styles.resetAudioButtonText}>إعادة تعيين الإعدادات</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1925,6 +2059,88 @@ const styles = StyleSheet.create({
   recordingText: {
     color: 'white',
     fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // Audio Controls Modal Styles
+  audioControlsContent: {
+    padding: 16,
+    gap: 20,
+  },
+  audioControl: {
+    gap: 12,
+  },
+  audioControlHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  audioControlLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  sliderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    padding: 12,
+  },
+  sliderValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    minWidth: 60,
+  },
+  sliderButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sliderButtonText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  audioSwitches: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  audioSwitch: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#f3f4f6',
+  },
+  audioSwitchActive: {
+    backgroundColor: '#ef4444',
+  },
+  audioSwitchText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  audioSwitchTextActive: {
+    color: 'white',
+  },
+  resetAudioButton: {
+    backgroundColor: '#8b5cf6',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  resetAudioButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });
