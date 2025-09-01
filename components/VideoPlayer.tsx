@@ -7,6 +7,7 @@ import {
   Dimensions,
   Animated,
   Share,
+  Platform,
 } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Image } from 'expo-image';
@@ -41,31 +42,53 @@ export default function VideoPlayer({
   onFollow,
 }: VideoPlayerProps) {
   const videoRef = useRef<Video>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [showHeart, setShowHeart] = useState(false);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [showHeart, setShowHeart] = useState<boolean>(false);
   const doubleTapRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartAnimation = useRef(new Animated.Value(0)).current;
-  const [localLiked, setLocalLiked] = useState(video.isLiked);
-  const [localLikes, setLocalLikes] = useState(video.likes);
-  const [localFollowing, setLocalFollowing] = useState(video.isFollowing);
+  const [localLiked, setLocalLiked] = useState<boolean>(video.isLiked);
+  const [localLikes, setLocalLikes] = useState<number>(video.likes);
+  const [localFollowing, setLocalFollowing] = useState<boolean>(video.isFollowing);
+  const [hasInteracted, setHasInteracted] = useState<boolean>(Platform.OS !== 'web');
+  const [muted, setMuted] = useState<boolean>(Platform.OS === 'web');
 
   useEffect(() => {
+    console.log('[VideoPlayer] isActive changed', { isActive, hasInteracted, platform: Platform.OS });
     if (isActive) {
-      videoRef.current?.playAsync();
-      setIsPlaying(true);
+      if (Platform.OS === 'web') {
+        if (hasInteracted) {
+          videoRef.current?.playAsync();
+          setIsPlaying(true);
+        } else {
+          videoRef.current?.pauseAsync();
+          setIsPlaying(false);
+        }
+      } else {
+        videoRef.current?.playAsync();
+        setIsPlaying(true);
+      }
     } else {
       videoRef.current?.pauseAsync();
       setIsPlaying(false);
     }
-  }, [isActive]);
+  }, [isActive, hasInteracted]);
 
   const handlePlayPause = () => {
+    console.log('[VideoPlayer] handlePlayPause', { isPlaying, hasInteracted, platform: Platform.OS });
+    if (Platform.OS === 'web' && !hasInteracted) {
+      setHasInteracted(true);
+      setMuted(false);
+      videoRef.current?.playAsync();
+      setIsPlaying(true);
+      return;
+    }
     if (isPlaying) {
       videoRef.current?.pauseAsync();
+      setIsPlaying(false);
     } else {
       videoRef.current?.playAsync();
+      setIsPlaying(true);
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleDoubleTap = () => {
@@ -137,6 +160,7 @@ export default function VideoPlayer({
         activeOpacity={1}
         style={styles.videoContainer}
         onPress={handleDoubleTap}
+        testID="video-touch-overlay"
       >
         <Video
           ref={videoRef}
@@ -144,11 +168,11 @@ export default function VideoPlayer({
           style={styles.video}
           resizeMode={ResizeMode.COVER}
           isLooping
-          shouldPlay={isActive}
-          isMuted={false}
+          shouldPlay={Platform.OS !== 'web' ? isActive : isActive && hasInteracted}
+          isMuted={muted}
           onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
-            if (status.isLoaded) {
-              setIsPlaying(status.isPlaying);
+            if ('isLoaded' in status && status.isLoaded) {
+              setIsPlaying(status.isPlaying ?? false);
             }
           }}
         />
@@ -172,6 +196,11 @@ export default function VideoPlayer({
           >
             <Heart size={100} color={colors.white} fill={colors.white} />
           </Animated.View>
+        )}
+        {Platform.OS === 'web' && !hasInteracted && (
+          <View style={styles.webPlayOverlay} pointerEvents="none">
+            <Text style={styles.webPlayText}>اضغط للتشغيل</Text>
+          </View>
         )}
       </TouchableOpacity>
 
@@ -214,7 +243,7 @@ export default function VideoPlayer({
 
       {/* Action Buttons */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleLike} testID="like-button">
           <Heart
             size={32}
             color={localLiked ? '#FF4458' : colors.white}
@@ -224,12 +253,12 @@ export default function VideoPlayer({
           <Text style={styles.actionText}>{formatNumber(localLikes)}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={onComment}>
+        <TouchableOpacity style={styles.actionButton} onPress={onComment} testID="comment-button">
           <MessageCircle size={32} color={colors.white} strokeWidth={2} />
           <Text style={styles.actionText}>{formatNumber(video.comments)}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleShare} testID="share-button">
           <Share2 size={32} color={colors.white} strokeWidth={2} />
           <Text style={styles.actionText}>{formatNumber(video.shares)}</Text>
         </TouchableOpacity>
@@ -244,7 +273,7 @@ export default function VideoPlayer({
           <Text style={styles.actionText}>{formatNumber(video.saves)}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.musicDisc}>
+        <TouchableOpacity style={styles.musicDisc} testID="music-disc">
           <Image source={{ uri: video.music.cover }} style={styles.musicCover} />
         </TouchableOpacity>
       </View>
@@ -254,6 +283,7 @@ export default function VideoPlayer({
         <TouchableOpacity
           style={styles.followButton}
           onPress={handleFollow}
+          testID="follow-button"
         >
           <Plus size={16} color={colors.white} strokeWidth={3} />
         </TouchableOpacity>
@@ -385,5 +415,24 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  webPlayOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+  },
+  webPlayText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
   },
 });
