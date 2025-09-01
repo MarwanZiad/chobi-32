@@ -278,6 +278,7 @@ function VideoStreamScreen() {
   
   const handleApplyFilter = useCallback((filterId: string) => {
     stream.applyVideoFilter(filterId);
+    setSelectedFilter(filterId);
     setShowEffectsModal(false);
   }, [stream]);
   
@@ -587,10 +588,10 @@ function VideoStreamScreen() {
                 {mockFilters.map((filter) => (
                   <TouchableOpacity
                     key={filter.id}
-                    onPress={() => { setSelectedFilter(filter.value); setShowEffectsModal(false); }}
+                    onPress={() => handleApplyFilter(filter.id.toString())}
                     style={[
                       styles.filterItem,
-                      selectedFilter === filter.value && styles.filterItemActive
+                      selectedFilter === filter.id.toString() && styles.filterItemActive
                     ]}
                   >
                     <Text style={styles.filterText}>{filter.name}</Text>
@@ -599,7 +600,11 @@ function VideoStreamScreen() {
               </ScrollView>
               <Text style={styles.sectionTitle}>التأثيرات</Text>
               <TouchableOpacity
-                onPress={() => setIsBeautyMode(!isBeautyMode)}
+                onPress={() => {
+                  setIsBeautyMode(!isBeautyMode);
+                  stream.updateSettings({ beautyMode: !isBeautyMode });
+                  Alert.alert('وضع الجمال', isBeautyMode ? 'تم إيقاف وضع الجمال' : 'تم تفعيل وضع الجمال');
+                }}
                 style={[styles.beautyButton, isBeautyMode && styles.beautyButtonActive]}
               >
                 <Sparkles size={20} color={isBeautyMode ? "white" : "#333"} />
@@ -621,17 +626,94 @@ function VideoStreamScreen() {
               </TouchableOpacity>
             </View>
             <View style={styles.settingsContent}>
-              <TouchableOpacity style={styles.settingItem}>
+              <TouchableOpacity 
+                style={styles.settingItem}
+                onPress={() => {
+                  const qualities = ['low', 'medium', 'high', 'ultra'] as const;
+                  const currentIndex = qualities.indexOf(stream.settings.videoQuality);
+                  const nextQuality = qualities[(currentIndex + 1) % qualities.length];
+                  stream.updateSettings({ videoQuality: nextQuality });
+                  Alert.alert('جودة الفيديو', `تم تغيير الجودة إلى ${nextQuality}`);
+                  setShowSettingsModal(false);
+                }}
+              >
                 <Video size={20} color="#333" />
-                <Text style={styles.settingText}>جودة الفيديو</Text>
+                <Text style={styles.settingText}>جودة الفيديو: {stream.settings.videoQuality}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.settingItem}>
+              <TouchableOpacity 
+                style={styles.settingItem}
+                onPress={() => {
+                  setShowAudioControlsModal(true);
+                  setShowSettingsModal(false);
+                }}
+              >
                 <Mic size={20} color="#333" />
                 <Text style={styles.settingText}>إعدادات الصوت</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.settingItem}>
+              <TouchableOpacity 
+                style={styles.settingItem}
+                onPress={() => {
+                  stream.updateSettings({ allowComments: !stream.settings.allowComments });
+                  Alert.alert('التعليقات', stream.settings.allowComments ? 'تم إيقاف التعليقات' : 'تم تفعيل التعليقات');
+                  setShowSettingsModal(false);
+                }}
+              >
+                <MessageCircle size={20} color={stream.settings.allowComments ? "#00ff00" : "#ff0000"} />
+                <Text style={styles.settingText}>{stream.settings.allowComments ? 'إيقاف التعليقات' : 'تفعيل التعليقات'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.settingItem}
+                onPress={() => {
+                  stream.updateSettings({ allowGifts: !stream.settings.allowGifts });
+                  Alert.alert('الهدايا', stream.settings.allowGifts ? 'تم إيقاف الهدايا' : 'تم تفعيل الهدايا');
+                  setShowSettingsModal(false);
+                }}
+              >
+                <Gift size={20} color={stream.settings.allowGifts ? "#00ff00" : "#ff0000"} />
+                <Text style={styles.settingText}>{stream.settings.allowGifts ? 'إيقاف الهدايا' : 'تفعيل الهدايا'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.settingItem}
+                onPress={() => {
+                  stream.toggleRecording();
+                  setShowSettingsModal(false);
+                }}
+              >
+                <Redo size={20} color={stream.isRecording ? "#ff0000" : "#333"} />
+                <Text style={styles.settingText}>{stream.isRecording ? 'إيقاف التسجيل' : 'بدء التسجيل'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.settingItem}
+                onPress={() => {
+                  const users = stream.viewers.slice(0, 10);
+                  if (users.length > 0) {
+                    Alert.alert(
+                      'إدارة المشاهدين',
+                      'اختر مستخدم للإدارة',
+                      [...users.map(user => ({
+                        text: user.name,
+                        onPress: () => {
+                          Alert.alert(
+                            user.name,
+                            'ماذا تريد أن تفعل؟',
+                            [
+                              { text: 'حظر', onPress: () => handleBlockUser(user.id), style: 'destructive' },
+                              { text: 'كتم', onPress: () => handleMuteUser(user.id) },
+                              { text: 'دعوة كضيف', onPress: () => handleInviteGuest(user.id) },
+                              { text: 'إلغاء', style: 'cancel' }
+                            ]
+                          );
+                        }
+                      })), { text: 'إلغاء', style: 'cancel' }]
+                    );
+                  } else {
+                    Alert.alert('لا يوجد مشاهدين', 'لا يوجد مشاهدين حالياً');
+                  }
+                  setShowSettingsModal(false);
+                }}
+              >
                 <Users size={20} color="#333" />
-                <Text style={styles.settingText}>إدارة المشاهدين</Text>
+                <Text style={styles.settingText}>إدارة المشاهدين ({stream.viewers.length})</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -669,8 +751,21 @@ function VideoStreamScreen() {
                   <TouchableOpacity 
                     style={styles.inviteButton}
                     onPress={() => {
-                      console.log(`دعوة مرسلة إلى ${host.name}`);
-                      setShowHostsModal(false);
+                      Alert.alert(
+                        'دعوة مضيف',
+                        `هل تريد دعوة ${host.name} للانضمام إلى البث؟`,
+                        [
+                          { text: 'إلغاء', style: 'cancel' },
+                          { 
+                            text: 'دعوة', 
+                            onPress: () => {
+                              console.log(`دعوة مرسلة إلى ${host.name}`);
+                              Alert.alert('تم الإرسال', `تم إرسال دعوة إلى ${host.name}`);
+                              setShowHostsModal(false);
+                            }
+                          }
+                        ]
+                      );
                     }}
                   >
                     <Text style={styles.inviteButtonText}>دعوة</Text>
@@ -715,7 +810,7 @@ function VideoStreamScreen() {
                   <TouchableOpacity 
                     style={styles.inviteButton}
                     onPress={() => {
-                      console.log(`دعوة مرسلة إلى ${viewer.name}`);
+                      handleInviteGuest(viewer.id.toString());
                       setShowGuestsModal(false);
                     }}
                   >
