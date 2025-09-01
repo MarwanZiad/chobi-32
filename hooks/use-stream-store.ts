@@ -225,8 +225,8 @@ export const [StreamProvider, useStream] = createContextHook(() => {
   const [streamStartTime, setStreamStartTime] = useState<Date | null>(null);
   const [streamEndTime, setStreamEndTime] = useState<Date | null>(null);
   
-  const statsIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const viewerSimulationRef = useRef<NodeJS.Timeout | null>(null);
+  const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const viewerSimulationRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   // Load settings from storage
   useEffect(() => {
