@@ -1,11 +1,10 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Alert,
   Platform,
@@ -13,11 +12,11 @@ import {
   FlatList,
   Dimensions,
   Image,
+  Linking,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
-import { X, Search, Play, Pause, SkipForward, SkipBack, Volume2, ExternalLink } from 'lucide-react-native';
+import { X, Search, Play, ExternalLink } from 'lucide-react-native';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
 interface YouTubePlayerModalProps {
   visible: boolean;
@@ -34,19 +33,109 @@ interface VideoResult {
   publishedAt?: string;
 }
 
-const YOUTUBE_API_KEY = 'AIzaSyBzBqP7FFdRUH9hfgHpzqfRgHpzqfRgHpz'; // Demo key - replace with real key
-
 export const YouTubePlayerModal: React.FC<YouTubePlayerModalProps> = ({ visible, onClose }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentVideoId, setCurrentVideoId] = useState('');
   const [currentVideoTitle, setCurrentVideoTitle] = useState('');
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<VideoResult[]>([]);
   const [showPlayer, setShowPlayer] = useState(false);
-  const webViewRef = useRef<WebView>(null);
 
-  // Real YouTube search using API
+  // Popular videos database
+  const popularVideos: VideoResult[] = [
+    {
+      id: 'dQw4w9WgXcQ',
+      title: 'Rick Astley - Never Gonna Give You Up',
+      thumbnail: `https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg`,
+      duration: '3:33',
+      channel: 'Rick Astley',
+      views: '1.3B views',
+      publishedAt: '2009',
+    },
+    {
+      id: 'kJQP7kiw5Fk',
+      title: 'Luis Fonsi - Despacito ft. Daddy Yankee',
+      thumbnail: `https://img.youtube.com/vi/kJQP7kiw5Fk/mqdefault.jpg`,
+      duration: '4:42',
+      channel: 'Luis Fonsi',
+      views: '8.2B views',
+      publishedAt: '2017',
+    },
+    {
+      id: 'JGwWNGJdvx8',
+      title: 'Ed Sheeran - Shape of You',
+      thumbnail: `https://img.youtube.com/vi/JGwWNGJdvx8/mqdefault.jpg`,
+      duration: '4:24',
+      channel: 'Ed Sheeran',
+      views: '6B views',
+      publishedAt: '2017',
+    },
+    {
+      id: 'OPf0YbXqDm0',
+      title: 'Mark Ronson - Uptown Funk ft. Bruno Mars',
+      thumbnail: `https://img.youtube.com/vi/OPf0YbXqDm0/mqdefault.jpg`,
+      duration: '4:31',
+      channel: 'Mark Ronson',
+      views: '5B views',
+      publishedAt: '2014',
+    },
+    {
+      id: '9bZkp7q19f0',
+      title: 'PSY - GANGNAM STYLE',
+      thumbnail: `https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg`,
+      duration: '4:13',
+      channel: 'officialpsy',
+      views: '4.9B views',
+      publishedAt: '2012',
+    },
+    {
+      id: 'fRh_vgS2dFE',
+      title: 'Justin Bieber - Sorry',
+      thumbnail: `https://img.youtube.com/vi/fRh_vgS2dFE/mqdefault.jpg`,
+      duration: '3:26',
+      channel: 'Justin Bieber',
+      views: '3.7B views',
+      publishedAt: '2015',
+    },
+    {
+      id: 'RgKAFK5djSk',
+      title: 'Wiz Khalifa - See You Again ft. Charlie Puth',
+      thumbnail: `https://img.youtube.com/vi/RgKAFK5djSk/mqdefault.jpg`,
+      duration: '3:58',
+      channel: 'Wiz Khalifa',
+      views: '6.1B views',
+      publishedAt: '2015',
+    },
+    {
+      id: 'hTWKbfoikeg',
+      title: 'Nirvana - Smells Like Teen Spirit',
+      thumbnail: `https://img.youtube.com/vi/hTWKbfoikeg/mqdefault.jpg`,
+      duration: '4:39',
+      channel: 'Nirvana',
+      views: '1.8B views',
+      publishedAt: '2009',
+    },
+    {
+      id: '60ItHLz5WEA',
+      title: 'Alan Walker - Faded',
+      thumbnail: `https://img.youtube.com/vi/60ItHLz5WEA/mqdefault.jpg`,
+      duration: '3:33',
+      channel: 'Alan Walker',
+      views: '3.5B views',
+      publishedAt: '2015',
+    },
+    {
+      id: 'YQHsXMglC9A',
+      title: 'Adele - Hello',
+      thumbnail: `https://img.youtube.com/vi/YQHsXMglC9A/mqdefault.jpg`,
+      duration: '4:55',
+      channel: 'Adele',
+      views: '3.1B views',
+      publishedAt: '2015',
+    },
+  ];
+
+  // Search videos
   const searchVideos = useCallback(async (query: string) => {
     if (!query.trim()) {
       Alert.alert('خطأ', 'الرجاء إدخال كلمة البحث');
@@ -57,125 +146,74 @@ export const YouTubePlayerModal: React.FC<YouTubePlayerModalProps> = ({ visible,
     console.log('🔍 البحث في YouTube عن:', query);
 
     try {
-      // For demo, using mock data. In production, use real YouTube API
-      // const response = await fetch(
-      //   `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`
-      // );
-      // const data = await response.json();
-      
-      // Mock popular videos for demo
-      const mockVideos: VideoResult[] = [
-        {
-          id: 'dQw4w9WgXcQ',
-          title: 'Rick Astley - Never Gonna Give You Up (Official Video)',
-          thumbnail: `https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg`,
-          duration: '3:33',
-          channel: 'Rick Astley',
-          views: '1.3B views',
-          publishedAt: '2009',
-        },
-        {
-          id: 'kJQP7kiw5Fk',
-          title: 'Luis Fonsi - Despacito ft. Daddy Yankee',
-          thumbnail: `https://img.youtube.com/vi/kJQP7kiw5Fk/mqdefault.jpg`,
-          duration: '4:42',
-          channel: 'Luis Fonsi',
-          views: '8.2B views',
-          publishedAt: '2017',
-        },
-        {
-          id: 'JGwWNGJdvx8',
-          title: 'Ed Sheeran - Shape of You [Official Video]',
-          thumbnail: `https://img.youtube.com/vi/JGwWNGJdvx8/mqdefault.jpg`,
-          duration: '4:24',
-          channel: 'Ed Sheeran',
-          views: '6B views',
-          publishedAt: '2017',
-        },
-        {
-          id: 'OPf0YbXqDm0',
-          title: 'Mark Ronson - Uptown Funk (Official Video) ft. Bruno Mars',
-          thumbnail: `https://img.youtube.com/vi/OPf0YbXqDm0/mqdefault.jpg`,
-          duration: '4:31',
-          channel: 'Mark Ronson',
-          views: '5B views',
-          publishedAt: '2014',
-        },
-        {
-          id: '9bZkp7q19f0',
-          title: 'PSY - GANGNAM STYLE(강남스타일) M/V',
-          thumbnail: `https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg`,
-          duration: '4:13',
-          channel: 'officialpsy',
-          views: '4.9B views',
-          publishedAt: '2012',
-        },
-        {
-          id: 'fRh_vgS2dFE',
-          title: 'Justin Bieber - Sorry (PURPOSE : The Movement)',
-          thumbnail: `https://img.youtube.com/vi/fRh_vgS2dFE/mqdefault.jpg`,
-          duration: '3:26',
-          channel: 'Justin Bieber',
-          views: '3.7B views',
-          publishedAt: '2015',
-        },
-        {
-          id: 'RgKAFK5djSk',
-          title: 'Wiz Khalifa - See You Again ft. Charlie Puth',
-          thumbnail: `https://img.youtube.com/vi/RgKAFK5djSk/mqdefault.jpg`,
-          duration: '3:58',
-          channel: 'Wiz Khalifa',
-          views: '6.1B views',
-          publishedAt: '2015',
-        },
-        {
-          id: 'hTWKbfoikeg',
-          title: 'Nirvana - Smells Like Teen Spirit',
-          thumbnail: `https://img.youtube.com/vi/hTWKbfoikeg/mqdefault.jpg`,
-          duration: '4:39',
-          channel: 'Nirvana',
-          views: '1.8B views',
-          publishedAt: '2009',
-        },
-      ];
+      // Simulate search delay
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Filter based on search query
-      const filtered = query.toLowerCase() === 'all' 
-        ? mockVideos 
-        : mockVideos.filter(video => 
-            video.title.toLowerCase().includes(query.toLowerCase()) ||
-            video.channel.toLowerCase().includes(query.toLowerCase())
-          );
-
-      setSearchResults(filtered.length > 0 ? filtered : mockVideos.slice(0, 3));
-      setIsLoading(false);
+      let results: VideoResult[];
       
-      if (filtered.length === 0) {
-        Alert.alert('نتائج البحث', `لم يتم العثور على نتائج دقيقة لـ "${query}"\nعرض فيديوهات مقترحة`);
+      if (query.toLowerCase() === 'all' || query === '*') {
+        results = popularVideos;
+      } else {
+        results = popularVideos.filter(video => 
+          video.title.toLowerCase().includes(query.toLowerCase()) ||
+          video.channel.toLowerCase().includes(query.toLowerCase())
+        );
       }
+
+      // If no results, show some suggestions
+      if (results.length === 0) {
+        results = popularVideos.slice(0, 3);
+        Alert.alert(
+          'نتائج البحث', 
+          `لم يتم العثور على نتائج لـ "${query}"\nعرض فيديوهات مقترحة`
+        );
+      }
+
+      setSearchResults(results);
+      setIsLoading(false);
     } catch (error) {
       console.error('خطأ في البحث:', error);
       setIsLoading(false);
-      Alert.alert('خطأ', 'حدث خطأ في البحث. يرجى المحاولة مرة أخرى');
+      Alert.alert('خطأ', 'حدث خطأ في البحث');
     }
   }, []);
 
+  // Play video
   const playVideo = useCallback((video: VideoResult) => {
     console.log('▶️ تشغيل الفيديو:', video.id, video.title);
     setCurrentVideoId(video.id);
     setCurrentVideoTitle(video.title);
     setShowPlayer(true);
-    setIsPlaying(true);
-    Alert.alert('تشغيل', `جاري تشغيل: ${video.title}`);
+    
+    // Show embed on web, open YouTube app on mobile
+    if (Platform.OS === 'web') {
+      // Will show iframe embed
+    } else {
+      // Open in YouTube app or browser
+      const youtubeURL = `https://www.youtube.com/watch?v=${video.id}`;
+      Linking.openURL(youtubeURL).catch(() => {
+        Alert.alert('خطأ', 'لا يمكن فتح YouTube');
+      });
+    }
   }, []);
 
+  // Open in external app
+  const openInYouTube = useCallback((videoId: string) => {
+    const youtubeURL = `https://www.youtube.com/watch?v=${videoId}`;
+    Linking.openURL(youtubeURL).catch(() => {
+      Alert.alert('خطأ', 'لا يمكن فتح YouTube');
+    });
+  }, []);
+
+  // Close player
   const closePlayer = useCallback(() => {
     setShowPlayer(false);
     setCurrentVideoId('');
     setCurrentVideoTitle('');
-    setIsPlaying(false);
   }, []);
 
+  // Render video item
   const renderVideoItem = ({ item }: { item: VideoResult }) => (
     <TouchableOpacity
       style={styles.videoItem}
@@ -200,47 +238,14 @@ export const YouTubePlayerModal: React.FC<YouTubePlayerModalProps> = ({ visible,
           {item.publishedAt && <Text style={styles.metaText}> • {item.publishedAt}</Text>}
         </View>
       </View>
-      <TouchableOpacity style={styles.playButton} onPress={() => playVideo(item)}>
-        <Play size={16} color="#fff" fill="#fff" />
+      <TouchableOpacity 
+        style={styles.playButton} 
+        onPress={() => openInYouTube(item.id)}
+      >
+        <ExternalLink size={16} color="#fff" />
       </TouchableOpacity>
     </TouchableOpacity>
   );
-
-  // YouTube embed HTML
-  const getYouTubeEmbedHTML = (videoId: string) => `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-        <style>
-          body { margin: 0; padding: 0; background: #000; }
-          .video-container { 
-            position: relative;
-            padding-bottom: 56.25%;
-            height: 0;
-            overflow: hidden;
-          }
-          .video-container iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: 0;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="video-container">
-          <iframe
-            src="https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0&modestbranding=1&controls=1"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-          ></iframe>
-        </div>
-      </body>
-    </html>
-  `;
 
   return (
     <Modal
@@ -263,7 +268,8 @@ export const YouTubePlayerModal: React.FC<YouTubePlayerModalProps> = ({ visible,
           </TouchableOpacity>
         </View>
 
-        {showPlayer && currentVideoId ? (
+        {/* Web Player */}
+        {showPlayer && currentVideoId && Platform.OS === 'web' && (
           <View style={styles.playerWrapper}>
             <View style={styles.playerHeader}>
               <Text style={styles.nowPlaying} numberOfLines={1}>
@@ -274,46 +280,25 @@ export const YouTubePlayerModal: React.FC<YouTubePlayerModalProps> = ({ visible,
               </TouchableOpacity>
             </View>
             
-            {Platform.OS === 'web' ? (
-              <View style={styles.webPlayerContainer}>
-                <iframe
-                  width="100%"
-                  height="100%"
-                  src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&playsinline=1`}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  style={{ border: 0 }}
-                />
-              </View>
-            ) : (
-              <WebView
-                ref={webViewRef}
-                source={{ html: getYouTubeEmbedHTML(currentVideoId) }}
-                style={styles.webView}
-                allowsFullscreenVideo={true}
-                mediaPlaybackRequiresUserAction={false}
-                javaScriptEnabled={true}
-                domStorageEnabled={true}
-                startInLoadingState={true}
-                renderLoading={() => (
-                  <View style={styles.loadingPlayer}>
-                    <ActivityIndicator size="large" color="#FF0000" />
-                  </View>
-                )}
-                onError={(error) => {
-                  console.error('WebView error:', error);
-                  Alert.alert('خطأ', 'فشل تحميل الفيديو');
-                }}
+            <View style={styles.webPlayerContainer}>
+              <iframe
+                width="100%"
+                height="100%"
+                src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&playsinline=1`}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ border: 0 }}
               />
-            )}
+            </View>
           </View>
-        ) : null}
+        )}
 
+        {/* Search Bar */}
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
-            placeholder="ابحث في YouTube... (اكتب all لعرض الكل)"
+            placeholder='ابحث في YouTube... (اكتب "all" لعرض الكل)'
             placeholderTextColor="#999"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -328,6 +313,7 @@ export const YouTubePlayerModal: React.FC<YouTubePlayerModalProps> = ({ visible,
           </TouchableOpacity>
         </View>
 
+        {/* Results */}
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#FF0000" />
@@ -343,6 +329,13 @@ export const YouTubePlayerModal: React.FC<YouTubePlayerModalProps> = ({ visible,
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>ابحث عن فيديوهات YouTube</Text>
                 <Text style={styles.emptySubtext}>اكتب "all" لعرض الفيديوهات الشائعة</Text>
+                <TouchableOpacity 
+                  style={styles.suggestButton}
+                  onPress={() => searchVideos('all')}
+                >
+                  <Play size={16} color="#fff" />
+                  <Text style={styles.suggestText}>عرض الفيديوهات الشائعة</Text>
+                </TouchableOpacity>
               </View>
             }
           />
@@ -405,21 +398,6 @@ const styles = StyleSheet.create({
     height: screenWidth * 0.5625, // 16:9 aspect ratio
     backgroundColor: '#000',
   },
-  webView: {
-    width: screenWidth,
-    height: screenWidth * 0.5625, // 16:9 aspect ratio
-    backgroundColor: '#000',
-  },
-  loadingPlayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000',
-  },
   searchContainer: {
     flexDirection: 'row',
     padding: 16,
@@ -471,14 +449,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#2a2a2a',
     borderRadius: 8,
     overflow: 'hidden',
-    position: 'relative',
+    position: 'relative' as const,
   },
   thumbnail: {
     width: '100%',
     height: '100%',
   },
   durationBadge: {
-    position: 'absolute',
+    position: 'absolute' as const,
     bottom: 4,
     right: 4,
     backgroundColor: 'rgba(0,0,0,0.9)',
@@ -535,5 +513,20 @@ const styles = StyleSheet.create({
   emptySubtext: {
     color: '#666',
     fontSize: 14,
+    marginBottom: 20,
+  },
+  suggestButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF0000',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+  },
+  suggestText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
 });
