@@ -59,8 +59,8 @@ export interface StreamStats {
 }
 
 interface StreamIntervals {
-  viewerCountInterval: NodeJS.Timeout | null;
-  heartAnimationInterval: NodeJS.Timeout | null;
+  viewerCountInterval: ReturnType<typeof setInterval> | null;
+  heartAnimationInterval: ReturnType<typeof setInterval> | null;
 }
 
 export interface ViewerInfo {
@@ -184,7 +184,7 @@ const VIDEO_FILTERS: VideoFilter[] = [
   { id: '8', name: 'نيون', icon: '💜', shader: 'neon', intensity: 75 },
 ];
 
-export const [StreamProvider, useStream] = createContextHook(() => {
+export const [StreamProvider, useStreamStore] = createContextHook(() => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamType, setStreamType] = useState<'video' | 'audio'>('video');
   const [settings, setSettings] = useState<StreamSettings>(DEFAULT_SETTINGS);
@@ -609,3 +609,5 @@ export const [StreamProvider, useStream] = createContextHook(() => {
     toggleRecording,
   };
 });
+
+export const useStream = useStreamStore;
