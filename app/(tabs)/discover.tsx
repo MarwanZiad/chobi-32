@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, FlatList, Dimensions } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  FlatList,
+  Dimensions,
+  SafeAreaView,
+} from 'react-native';
 import { Image } from 'expo-image';
 import { 
   ArrowLeft, 
