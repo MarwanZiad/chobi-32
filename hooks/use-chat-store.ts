@@ -129,10 +129,10 @@ export const [ChatProvider, useChat] = createContextHook(() => {
   const loadInitialData = useCallback(async () => {
     try {
       // Load from AsyncStorage or use mock data - using short keys to avoid iOS file name length issues
-      const storedChats = await AsyncStorage.getItem('c');
-      const storedMessages = await AsyncStorage.getItem('m');
-      const storedUsers = await AsyncStorage.getItem('u');
-      const storedNotifications = await AsyncStorage.getItem('n');
+      const storedChats = await AsyncStorage.getItem('chats');
+      const storedMessages = await AsyncStorage.getItem('msgs');
+      const storedUsers = await AsyncStorage.getItem('users');
+      const storedNotifications = await AsyncStorage.getItem('notifs');
 
       // Parse and convert date strings back to Date objects
       const parsedChats = storedChats ? JSON.parse(storedChats).map((chat: any) => ({
@@ -214,7 +214,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     setNotifications(prev => {
       const updated = [newNotification, ...prev];
       // Save to storage
-      AsyncStorage.setItem('n', JSON.stringify(updated)).catch(error => {
+      AsyncStorage.setItem('notifs', JSON.stringify(updated)).catch(error => {
         console.error('Error saving notification:', error);
       });
       return updated;
@@ -252,7 +252,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     setMessages(prev => {
       const updated = [...prev, newMessage];
       // Save to storage
-      AsyncStorage.setItem('m', JSON.stringify(updated)).catch(error => {
+      AsyncStorage.setItem('msgs', JSON.stringify(updated)).catch(error => {
         console.error('Error saving message:', error);
       });
       return updated;
@@ -266,7 +266,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           : chat
       );
       // Save to storage
-      AsyncStorage.setItem('c', JSON.stringify(updated)).catch(error => {
+      AsyncStorage.setItem('chats', JSON.stringify(updated)).catch(error => {
         console.error('Error updating chat:', error);
       });
       return updated;
@@ -284,7 +284,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           : msg
       );
       // Save to storage
-      AsyncStorage.setItem('m', JSON.stringify(updated)).catch(error => {
+      AsyncStorage.setItem('msgs', JSON.stringify(updated)).catch(error => {
         console.error('Error deleting message:', error);
       });
       return updated;
@@ -300,7 +300,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           : msg
       );
       // Save to storage
-      AsyncStorage.setItem('m', JSON.stringify(updated)).catch(error => {
+      AsyncStorage.setItem('msgs', JSON.stringify(updated)).catch(error => {
         console.error('Error marking messages as read:', error);
       });
       return updated;
@@ -313,7 +313,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           : chat
       );
       // Save to storage
-      AsyncStorage.setItem('c', JSON.stringify(updated)).catch(error => {
+      AsyncStorage.setItem('chats', JSON.stringify(updated)).catch(error => {
         console.error('Error updating chat unread count:', error);
       });
       return updated;
@@ -419,7 +419,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           : notif
       );
       // Save to storage
-      AsyncStorage.setItem('n', JSON.stringify(updated)).catch(error => {
+      AsyncStorage.setItem('notifs', JSON.stringify(updated)).catch(error => {
         console.error('Error marking notification as read:', error);
       });
       return updated;
@@ -431,7 +431,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
     setNotifications([]);
     
     try {
-      await AsyncStorage.removeItem('n');
+      await AsyncStorage.removeItem('notifs');
     } catch (error) {
       console.error('Error clearing notifications:', error);
     }
@@ -477,7 +477,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
 
       const updated = [...prev, newChat];
       // Save to storage
-      AsyncStorage.setItem('c', JSON.stringify(updated)).catch(error => {
+      AsyncStorage.setItem('chats', JSON.stringify(updated)).catch(error => {
         console.error('Error creating chat:', error);
       });
       return updated;
@@ -495,7 +495,7 @@ export const [ChatProvider, useChat] = createContextHook(() => {
           : user
       );
       // Save to storage
-      AsyncStorage.setItem('u', JSON.stringify(updated)).catch(error => {
+      AsyncStorage.setItem('users', JSON.stringify(updated)).catch(error => {
         console.error('Error updating user status:', error);
       });
       return updated;
