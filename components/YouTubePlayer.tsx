@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,8 @@ import {
   Image,
   Linking,
 } from 'react-native';
-import { X, Search, Play, ExternalLink } from 'lucide-react-native';
+import { WebView } from 'react-native-webview';
+import { X, Search, Play, ExternalLink, Pause } from 'lucide-react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -40,6 +41,8 @@ export const YouTubePlayerModal: React.FC<YouTubePlayerModalProps> = ({ visible,
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<VideoResult[]>([]);
   const [showPlayer, setShowPlayer] = useState(false);
+  const [isPlayerPlaying, setIsPlayerPlaying] = useState(false);
+  const webViewRef = useRef<WebView>(null);
 
   // Popular videos database
   const popularVideos: VideoResult[] = [
@@ -185,17 +188,16 @@ export const YouTubePlayerModal: React.FC<YouTubePlayerModalProps> = ({ visible,
     setCurrentVideoId(video.id);
     setCurrentVideoTitle(video.title);
     setShowPlayer(true);
+    setIsPlayerPlaying(true);
     
-    // Show embed on web, open YouTube app on mobile
-    if (Platform.OS === 'web') {
-      // Will show iframe embed
-    } else {
-      // Open in YouTube app or browser
-      const youtubeURL = `https://www.youtube.com/watch?v=${video.id}`;
-      Linking.openURL(youtubeURL).catch(() => {
-        Alert.alert('خطأ', 'لا يمكن فتح YouTube');
-      });
-    }
+    Alert.alert(
+      'تشغيل الفيديو',
+      `سيتم تشغيل: ${video.title}`,
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        { text: 'تشغيل', onPress: () => console.log('بدء التشغيل') }
+      ]
+    );
   }, []);
 
   // Open in external app
@@ -211,7 +213,94 @@ export const YouTubePlayerModal: React.FC<YouTubePlayerModalProps> = ({ visible,
     setShowPlayer(false);
     setCurrentVideoId('');
     setCurrentVideoTitle('');
+    setIsPlayerPlaying(false);
   }, []);
+
+  // Toggle play/pause
+  const togglePlayPause = useCallback(() => {
+    if (Platform.OS === 'web' && webViewRef.current) {
+      const command = isPlayerPlaying ? 'pauseVideo' : 'playVideo';
+      webViewRef.current.postMessage(JSON.stringify({ command }));
+    }
+    setIsPlayerPlaying(!isPlayerPlaying);
+  }, [isPlayerPlaying]);
+
+  // Handle WebView messages
+  const handleWebViewMessage = useCallback((event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.event === 'video-ready') {
+        console.log('YouTube player ready');
+      } else if (data.event === 'video-state-change') {
+        setIsPlayerPlaying(data.state === 1); // 1 = playing
+      }
+    } catch (error) {
+      console.error('WebView message error:', error);
+    }
+  }, []);
+
+  // Generate YouTube embed HTML
+  const getYouTubeEmbedHTML = (videoId: string) => `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { margin: 0; padding: 0; background: #000; }
+        #player { width: 100%; height: 100vh; }
+      </style>
+    </head>
+    <body>
+      <div id="player"></div>
+      <script>
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        
+        var player;
+        function onYouTubeIframeAPIReady() {
+          player = new YT.Player('player', {
+            height: '100%',
+            width: '100%',
+            videoId: '${videoId}',
+            playerVars: {
+              'playsinline': 1,
+              'autoplay': 1,
+              'controls': 1,
+              'rel': 0,
+              'modestbranding': 1
+            },
+            events: {
+              'onReady': function(event) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  event: 'video-ready'
+                }));
+              },
+              'onStateChange': function(event) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  event: 'video-state-change',
+                  state: event.data
+                }));
+              }
+            }
+          });
+        }
+        
+        window.addEventListener('message', function(event) {
+          try {
+            var data = JSON.parse(event.data);
+            if (data.command === 'playVideo') {
+              player.playVideo();
+            } else if (data.command === 'pauseVideo') {
+              player.pauseVideo();
+            }
+          } catch (e) {}
+        });
+      </script>
+    </body>
+    </html>
+  `;
 
   // Render video item
   const renderVideoItem = ({ item }: { item: VideoResult }) => (
@@ -268,28 +357,58 @@ export const YouTubePlayerModal: React.FC<YouTubePlayerModalProps> = ({ visible,
           </TouchableOpacity>
         </View>
 
-        {/* Web Player */}
-        {showPlayer && currentVideoId && Platform.OS === 'web' && (
+        {/* Video Player */}
+        {showPlayer && currentVideoId && (
           <View style={styles.playerWrapper}>
             <View style={styles.playerHeader}>
               <Text style={styles.nowPlaying} numberOfLines={1}>
                 {currentVideoTitle}
               </Text>
-              <TouchableOpacity onPress={closePlayer} style={styles.closePlayerButton}>
-                <X size={20} color="#fff" />
-              </TouchableOpacity>
+              <View style={styles.playerControls}>
+                <TouchableOpacity onPress={togglePlayPause} style={styles.playPauseButton}>
+                  {isPlayerPlaying ? (
+                    <Pause size={20} color="#fff" />
+                  ) : (
+                    <Play size={20} color="#fff" />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={closePlayer} style={styles.closePlayerButton}>
+                  <X size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
             </View>
             
             <View style={styles.webPlayerContainer}>
-              <iframe
-                width="100%"
-                height="100%"
-                src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&playsinline=1`}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                style={{ border: 0 }}
-              />
+              {Platform.OS === 'web' ? (
+                <WebView
+                  ref={webViewRef}
+                  source={{ html: getYouTubeEmbedHTML(currentVideoId) }}
+                  style={styles.webView}
+                  javaScriptEnabled={true}
+                  domStorageEnabled={true}
+                  startInLoadingState={true}
+                  onMessage={handleWebViewMessage}
+                  allowsInlineMediaPlayback={true}
+                  mediaPlaybackRequiresUserAction={false}
+                />
+              ) : (
+                <View style={styles.mobilePlayerPlaceholder}>
+                  <Image 
+                    source={{ uri: `https://img.youtube.com/vi/${currentVideoId}/maxresdefault.jpg` }}
+                    style={styles.videoThumbnail}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity 
+                    style={styles.mobilePlayButton}
+                    onPress={() => openInYouTube(currentVideoId)}
+                  >
+                    <Play size={40} color="#fff" fill="#fff" />
+                  </TouchableOpacity>
+                  <Text style={styles.mobilePlayerText}>
+                    اضغط لفتح في تطبيق YouTube
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -328,7 +447,7 @@ export const YouTubePlayerModal: React.FC<YouTubePlayerModalProps> = ({ visible,
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>ابحث عن فيديوهات YouTube</Text>
-                <Text style={styles.emptySubtext}>اكتب "all" لعرض الفيديوهات الشائعة</Text>
+                <Text style={styles.emptySubtext}>اكتب &quot;all&quot; لعرض الفيديوهات الشائعة</Text>
                 <TouchableOpacity 
                   style={styles.suggestButton}
                   onPress={() => searchVideos('all')}
@@ -397,6 +516,45 @@ const styles = StyleSheet.create({
     width: screenWidth,
     height: screenWidth * 0.5625, // 16:9 aspect ratio
     backgroundColor: '#000',
+  },
+  webView: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  playerControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  playPauseButton: {
+    padding: 4,
+  },
+  mobilePlayerPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+    position: 'relative' as const,
+  },
+  videoThumbnail: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute' as const,
+  },
+  mobilePlayButton: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 50,
+    padding: 20,
+    marginBottom: 20,
+  },
+  mobilePlayerText: {
+    color: '#fff',
+    fontSize: 14,
+    textAlign: 'center' as const,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   searchContainer: {
     flexDirection: 'row',

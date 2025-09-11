@@ -306,21 +306,21 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   gradient: {
-    position: 'absolute',
+    position: 'absolute' as const,
     left: 0,
     right: 0,
     bottom: 0,
     height: 300,
   },
   heartAnimation: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: '50%',
     left: '50%',
     marginLeft: -50,
     marginTop: -50,
   },
   bottomInfo: {
-    position: 'absolute',
+    position: 'absolute' as const,
     bottom: 80,
     left: 12,
     right: 80,
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     maxWidth: 180,
   },
   actions: {
-    position: 'absolute',
+    position: 'absolute' as const,
     right: 12,
     bottom: 80,
     alignItems: 'center',
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   followButton: {
-    position: 'absolute',
+    position: 'absolute' as const,
     right: 12,
     bottom: 440,
     backgroundColor: '#FF4458',
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   webPlayOverlay: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: 0,
     left: 0,
     right: 0,

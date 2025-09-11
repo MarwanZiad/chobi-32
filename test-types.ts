@@ -1,8 +1,8 @@
 // Test file to check TypeScript compilation
-import { useStreamStore } from './hooks/use-stream-store';
+import { useStream } from './hooks/use-stream-store';
 
 const test = () => {
-  const store = useStreamStore();
+  const store = useStream();
   console.log(store);
 };
 
