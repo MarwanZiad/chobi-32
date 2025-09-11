@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
-import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
+import React, { useEffect, useState, Component, ReactNode } from "react";
+import { View, ActivityIndicator, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ChobiContext } from "@/hooks/use-chobi-store";
 import { ChatProvider, useChat } from "@/hooks/use-chat-store";
@@ -17,6 +17,46 @@ import { trpc, trpcClient } from "@/lib/trpc";
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+
+// Error Boundary Component
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('Error Boundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>حدث خطأ في التطبيق</Text>
+          <Text style={styles.errorMessage}>
+            {this.state.error?.message || 'خطأ غير معروف'}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => this.setState({ hasError: false, error: undefined })}
+          >
+            <Text style={styles.retryButtonText}>إعادة المحاولة</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 function RootLayoutNav() {
   const { isLoggedIn, isLoading, hasCompletedOnboarding } = useAuth();
@@ -93,26 +133,28 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <AppProvider>
-            <NotificationProvider>
-              <ChatProvider>
-                <StreamProvider>
-                  <ChobiContext>
-                    <GestureHandlerRootView style={{ flex: 1 }}>
-                      <RootLayoutNav />
-                      <CallScreenWrapper />
-                    </GestureHandlerRootView>
-                  </ChobiContext>
-                </StreamProvider>
-              </ChatProvider>
-            </NotificationProvider>
-          </AppProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </trpc.Provider>
+    <ErrorBoundary>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <AppProvider>
+              <NotificationProvider>
+                <ChatProvider>
+                  <StreamProvider>
+                    <ChobiContext>
+                      <GestureHandlerRootView style={styles.gestureContainer}>
+                        <RootLayoutNav />
+                        <CallScreenWrapper />
+                      </GestureHandlerRootView>
+                    </ChobiContext>
+                  </StreamProvider>
+                </ChatProvider>
+              </NotificationProvider>
+            </AppProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </trpc.Provider>
+    </ErrorBoundary>
   );
 }
 
@@ -127,5 +169,40 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     marginTop: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+    padding: 20,
+  },
+  errorTitle: {
+    color: '#ff6b6b',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    color: '#fff',
+    fontSize: 14,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  retryButton: {
+    backgroundColor: '#ff6b6b',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  gestureContainer: {
+    flex: 1,
   },
 });

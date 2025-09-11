@@ -2,6 +2,38 @@ import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 
+// Safe storage utility
+const safeStorage = {
+  async getItem(key: string): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch (error) {
+      console.warn(`Failed to get item ${key}:`, error);
+      return null;
+    }
+  },
+  
+  async setItem(key: string, value: string): Promise<boolean> {
+    try {
+      await AsyncStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      console.warn(`Failed to set item ${key}:`, error);
+      return false;
+    }
+  },
+  
+  async removeItem(key: string): Promise<boolean> {
+    try {
+      await AsyncStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      console.warn(`Failed to remove item ${key}:`, error);
+      return false;
+    }
+  }
+};
+
 interface User {
   id: string;
   name: string;
@@ -69,18 +101,29 @@ export const [AppProvider, useApp] = createContextHook(() => {
     
     const loadSettings = async () => {
       try {
-        const savedSettings = await AsyncStorage.getItem('app_settings');
-        const savedUser = await AsyncStorage.getItem('user_data');
+        // Use shorter keys and load sequentially
+        const savedSettings = await safeStorage.getItem('as');
+        const savedUser = await safeStorage.getItem('ud');
         
         if (isMounted) {
           if (savedSettings) {
-            const settings = JSON.parse(savedSettings);
-            setAppState(prev => ({ ...prev, settings }));
+            try {
+              const settings = JSON.parse(savedSettings);
+              setAppState(prev => ({ ...prev, settings }));
+            } catch (parseError) {
+              console.warn('Failed to parse app settings, using defaults:', parseError);
+              await safeStorage.removeItem('as');
+            }
           }
           
           if (savedUser) {
-            const user = JSON.parse(savedUser);
-            setAppState(prev => ({ ...prev, user }));
+            try {
+              const user = JSON.parse(savedUser);
+              setAppState(prev => ({ ...prev, user }));
+            } catch (parseError) {
+              console.warn('Failed to parse user data, using default:', parseError);
+              await safeStorage.removeItem('ud');
+            }
           }
           
           setAppState(prev => ({ ...prev, isLoading: false }));
@@ -104,7 +147,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const updateSettings = async (newSettings: Partial<AppSettings>) => {
     try {
       const updatedSettings = { ...appState.settings, ...newSettings };
-      await AsyncStorage.setItem('app_settings', JSON.stringify(updatedSettings));
+      await safeStorage.setItem('as', JSON.stringify(updatedSettings));
       setAppState(prev => ({ ...prev, settings: updatedSettings }));
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -115,7 +158,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const updateUser = async (userData: Partial<User>) => {
     try {
       const updatedUser = { ...appState.user, ...userData } as User;
-      await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
+      await safeStorage.setItem('ud', JSON.stringify(updatedUser));
       setAppState(prev => ({ ...prev, user: updatedUser }));
     } catch (error) {
       console.error('Error updating user:', error);
@@ -140,7 +183,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
   // Clear all data (logout)
   const clearAppData = async () => {
     try {
-      await AsyncStorage.multiRemove(['app_settings', 'user_data']);
+      // Remove items individually to avoid multiRemove issues
+      await safeStorage.removeItem('as');
+      await safeStorage.removeItem('ud');
       setAppState({
         user: null,
         settings: defaultSettings,

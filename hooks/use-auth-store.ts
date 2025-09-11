@@ -2,6 +2,38 @@ import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 
+// Safe storage utility
+const safeStorage = {
+  async getItem(key: string): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch (error) {
+      console.warn(`Failed to get item ${key}:`, error);
+      return null;
+    }
+  },
+  
+  async setItem(key: string, value: string): Promise<boolean> {
+    try {
+      await AsyncStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      console.warn(`Failed to set item ${key}:`, error);
+      return false;
+    }
+  },
+  
+  async removeItem(key: string): Promise<boolean> {
+    try {
+      await AsyncStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      console.warn(`Failed to remove item ${key}:`, error);
+      return false;
+    }
+  }
+};
+
 interface User {
   id: string;
   name: string;
@@ -26,11 +58,11 @@ interface AuthState {
 }
 
 const STORAGE_KEYS = {
-  USER_DATA: 'user_data',
-  IS_LOGGED_IN: 'isLoggedIn',
-  ONBOARDING_COMPLETED: 'onboarding_completed',
-  USER_EMAIL: 'userEmail',
-  USER_NAME: 'userName',
+  USER_DATA: 'ud',
+  IS_LOGGED_IN: 'li',
+  ONBOARDING_COMPLETED: 'oc',
+  USER_EMAIL: 'ue',
+  USER_NAME: 'un',
 } as const;
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
@@ -48,16 +80,22 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     const loadAuthData = async () => {
       try {
         console.log('Loading auth data...');
-        const [isLoggedIn, userData, onboardingCompleted] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEYS.IS_LOGGED_IN),
-          AsyncStorage.getItem(STORAGE_KEYS.USER_DATA),
-          AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETED),
-        ]);
+        
+        // Load data sequentially to avoid storage conflicts
+        const isLoggedIn = await safeStorage.getItem(STORAGE_KEYS.IS_LOGGED_IN);
+        const userData = await safeStorage.getItem(STORAGE_KEYS.USER_DATA);
+        const onboardingCompleted = await safeStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETED);
 
         console.log('Auth data loaded:', { isLoggedIn, hasUserData: !!userData, onboardingCompleted });
 
         if (isMounted) {
-          const parsedUser = userData ? JSON.parse(userData) : null;
+          let parsedUser = null;
+          try {
+            parsedUser = userData ? JSON.parse(userData) : null;
+          } catch (parseError) {
+            console.warn('Failed to parse user data, resetting:', parseError);
+            await safeStorage.removeItem(STORAGE_KEYS.USER_DATA);
+          }
           
           setAuthState({
             user: parsedUser,
@@ -85,12 +123,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const login = async (userData: User, email: string) => {
     try {
       console.log('Logging in user:', userData.name);
-      await Promise.all([
-        AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData)),
-        AsyncStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, 'true'),
-        AsyncStorage.setItem(STORAGE_KEYS.USER_EMAIL, email),
-        AsyncStorage.setItem(STORAGE_KEYS.USER_NAME, userData.name),
-      ]);
+      
+      // Save data sequentially to avoid conflicts
+      await safeStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+      await safeStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, 'true');
+      await safeStorage.setItem(STORAGE_KEYS.USER_EMAIL, email);
+      await safeStorage.setItem(STORAGE_KEYS.USER_NAME, userData.name);
 
       setAuthState(prev => ({
         ...prev,
@@ -110,12 +148,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const logout = async () => {
     try {
       console.log('Logging out user...');
-      await AsyncStorage.multiRemove([
-        STORAGE_KEYS.USER_DATA,
-        STORAGE_KEYS.IS_LOGGED_IN,
-        STORAGE_KEYS.USER_EMAIL,
-        STORAGE_KEYS.USER_NAME,
-      ]);
+      
+      // Remove items individually to avoid multiRemove issues
+      await safeStorage.removeItem(STORAGE_KEYS.USER_DATA);
+      await safeStorage.removeItem(STORAGE_KEYS.IS_LOGGED_IN);
+      await safeStorage.removeItem(STORAGE_KEYS.USER_EMAIL);
+      await safeStorage.removeItem(STORAGE_KEYS.USER_NAME);
 
       setAuthState({
         user: null,
@@ -138,7 +176,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     try {
       const updatedUser = { ...authState.user, ...updates };
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(updatedUser));
+      await safeStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(updatedUser));
       
       setAuthState(prev => ({
         ...prev,
@@ -155,7 +193,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   // إكمال الإعداد الأولي
   const completeOnboarding = async () => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETED, 'true');
+      await safeStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETED, 'true');
       setAuthState(prev => ({ ...prev, hasCompletedOnboarding: true }));
       return { success: true };
     } catch (error) {
@@ -167,8 +205,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   // التحقق من صحة الجلسة
   const validateSession = async () => {
     try {
-      const isLoggedIn = await AsyncStorage.getItem(STORAGE_KEYS.IS_LOGGED_IN);
-      const userData = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
+      const isLoggedIn = await safeStorage.getItem(STORAGE_KEYS.IS_LOGGED_IN);
+      const userData = await safeStorage.getItem(STORAGE_KEYS.USER_DATA);
       
       if (isLoggedIn === 'true' && userData) {
         const user = JSON.parse(userData);
